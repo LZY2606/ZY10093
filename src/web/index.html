@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binary Format Workbench</title>
+<style>
+  :root {
+    --bg:#0f1216; --panel:#171c23; --panel2:#1d242d; --border:#2a323d;
+    --text:#e6ebf0; --muted:#8b98a7; --accent:#5aa9ff; --ok:#4cc38a;
+    --warn:#e3b341; --err:#f47067; --unknown:#6e7681;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",monospace; }
+  header { padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:15px; margin:0; font-weight:600; }
+  .tabs { display:flex; gap:4px; }
+  .tabs button { background:transparent; color:var(--muted); border:1px solid transparent;
+    padding:5px 12px; border-radius:6px; cursor:pointer; font:inherit; }
+  .tabs button.active { background:var(--panel2); color:var(--text); border-color:var(--border); }
+  main { padding:14px; display:grid; gap:14px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid3 { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px; }
+  .card h2 { font-size:12px; margin:0 0 10px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.06em; }
+  label { display:block; color:var(--muted); margin:8px 0 3px; font-size:11px; }
+  select,input,textarea { width:100%; background:var(--bg); color:var(--text);
+    border:1px solid var(--border); border-radius:5px; padding:6px 8px; font:inherit; }
+  textarea { resize:vertical; min-height:70px; }
+  button.act { background:var(--accent); color:#06121f; border:0; padding:7px 14px;
+    border-radius:6px; font-weight:600; cursor:pointer; margin-top:10px; font:inherit; }
+  button.ghost { background:var(--panel2); color:var(--text); border:1px solid var(--border); }
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--border);
+    vertical-align:top; }
+  th { color:var(--muted); font-weight:500; font-size:11px; }
+  tr.node { cursor:pointer; }
+  tr.node:hover { background:var(--panel2); }
+  tr.node.selected { background:#243040; }
+  .badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:10px; }
+  .b-ok { background:#143524; color:var(--ok); }
+  .b-warn { background:#3a2f10; color:var(--warn); }
+  .b-err { background:#3c1f1c; color:var(--err); }
+  .b-unknown { background:#22272e; color:var(--unknown); }
+  .b-strict { background:#143524; color:var(--ok); }
+  .b-semantic { background:#102b3a; color:var(--accent); }
+  .b-lossy { background:#3a2f10; color:var(--warn); }
+  pre.hex { margin:0; line-height:1.7; white-space:pre-wrap; word-break:break-all; }
+  .hb { border-radius:3px; padding:0 1px; cursor:pointer; }
+  .hb:hover { outline:1px solid var(--accent); }
+  .muted { color:var(--muted); }
+  .row { display:flex; gap:8px; align-items:center; }
+  .err-line { color:var(--err); }
+  .warn-line { color:var(--warn); }
+  #tooltip { position:fixed; pointer-events:none; background:#0a0d11; border:1px solid var(--border);
+    padding:8px 10px; border-radius:6px; display:none; z-index:9; max-width:340px; font-size:11px; }
+  .hidden { display:none; }
+  code.json { white-space:pre-wrap; word-break:break-all; color:var(--muted); }
+  .pane-title { display:flex; justify-content:space-between; align-items:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Binary Format Workbench</h1>
+  <div class="tabs">
+    <button data-tab="inspect" class="active">解析检查</button>
+    <button data-tab="diff">双版本差异</button>
+    <button data-tab="migrate">迁移工作台</button>
+  </div>
+  <span class="muted" id="global-status"></span>
+</header>
+<main>
+  <section id="tab-inspect" class="grid3">
+    <div class="card">
+      <h2>输入</h2>
+      <label>格式</label>
+      <select id="in-format"></select>
+      <label>已导入样本</label>
+      <select id="in-sample"><option value="">— 直接粘贴 hex —</option></select>
+      <label>样本 Hex（原始字节，保留不改写）</label>
+      <textarea id="in-hex" placeholder="494d5831..."></textarea>
+      <div class="row">
+        <button class="act" id="btn-parse">解析</button>
+        <button class="act ghost" id="btn-emit">原样写回</button>
+        <span id="parse-verdict"></span>
+      </div>
+      <div id="emit-result" class="muted" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>结构树（点击节点看读/写范围）</h2>
+      <div style="max-height:480px; overflow:auto">
+        <table id="tree-table"><thead><tr><th>路径</th><th>类型</th><th>范围</th><th>值</th></tr></thead>
+        <tbody></tbody></table>
+      </div>
+      <div id="selection" class="muted" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>十六进制覆盖图</h2>
+      <pre class="hex" id="hexview"></pre>
+      <div style="margin-top:10px">
+        <span class="badge b-ok">已知字段</span>
+        <span class="badge b-unknown">未识别区域</span>
+        <span class="badge b-err">错误</span>
+      </div>
+      <h2 style="margin-top:14px">告警 / 错误（含精确偏移）</h2>
+      <div id="issues" style="max-height:200px; overflow:auto"></div>
+    </div>
+  </section>
+
+  <section id="tab-diff" class="hidden">
+    <div class="card">
+      <h2>双版本差异</h2>
+      <div class="row">
+        <div style="flex:1"><label>样本</label><select id="diff-sample"></select></div>
+        <div><label>版本 A</label><select id="diff-a"></select></div>
+        <div><label>版本 B</label><select id="diff-b"></select></div>
+        <button class="act" id="btn-diff">比较</button>
+      </div>
+      <div id="diff-summary" style="margin-top:10px"></div>
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="card"><h2 id="diff-title-a">A</h2><div id="diff-tree-a" style="max-height:420px; overflow:auto"></div></div>
+      <div class="card"><h2 id="diff-title-b">B</h2><div id="diff-tree-b" style="max-height:420px; overflow:auto"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-migrate" class="hidden">
+    <div class="grid2">
+      <div class="card">
+        <h2>迁移规则与 dry-run</h2>
+        <div class="row">
+          <div style="flex:1"><label>规则</label><select id="m-rule"></select></div>
+          <div style="flex:1"><label>样本</label><select id="m-sample"></select></div>
+          <button class="act" id="btn-dry">Dry-run</button>
+        </div>
+        <div id="dry-verdict" style="margin:10px 0"></div>
+        <h2>字段来源 / 默认值</h2>
+        <table id="provenance"><thead><tr><th>目标字段</th><th>来源</th><th>来源路径/值</th><th>备注</th></tr></thead><tbody></tbody></table>
+        <h2 style="margin-top:12px">损失</h2>
+        <div id="dry-losses"></div>
+        <h2 style="margin-top:12px">输出布局</h2>
+        <div id="dry-layout" style="max-height:240px; overflow:auto"></div>
+      </div>
+      <div class="card">
+        <h2>已发布计划与批量转换</h2>
+        <label>计划 ID</label><input id="plan-id" value="plan-web">
+        <div class="row"><button class="act ghost" id="btn-publish">校验并冻结发布</button>
+          <button class="act" id="btn-batch">批量转换（已发布计划）</button></div>
+        <div id="plan-result" style="margin-top:10px"></div>
+        <h2 style="margin-top:14px">计划列表（含冻结指纹与批次）</h2>
+        <div id="plans" style="max-height:300px; overflow:auto"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="tooltip"></div>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>二进制格式工作台</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header>
+  <h1>二进制格式版本工作台</h1>
+  <nav>
+    <button data-tab="defs" class="tab active">格式定义</button>
+    <button data-tab="samples" class="tab">样本与解析</button>
+    <button data-tab="rules" class="tab">迁移规则</button>
+    <button data-tab="plans" class="tab">计划与批次</button>
+    <a class="dl" href="/api/export.tar" download>导出 .tar</a>
+  </nav>
+</header>
+
+<main>
+  <!-- ================= Definitions ================= -->
+  <section id="tab-defs" class="tabpane active">
+    <div class="cols">
+      <div class="panel">
+        <h2>定义列表</h2>
+        <div id="def-list" class="list"></div>
+      </div>
+      <div class="panel grow">
+        <h2>编辑 / 新建定义</h2>
+        <div class="row">
+          <label>基准修订号（首次为 0）<input id="def-base" type="number" value="0" style="width:80px"></label>
+          <button id="def-new">空白模板</button>
+          <button id="def-save" class="primary">保存为新修订</button>
+          <button id="def-validate">仅校验</button>
+        </div>
+        <textarea id="def-editor" spellcheck="false"></textarea>
+        <div id="def-result" class="result"></div>
+        <div id="def-resolved" class="mono small"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Samples / parse ================= -->
+  <section id="tab-samples" class="tabpane">
+    <div class="cols">
+      <div class="panel">
+        <h2>样本（原始字节不可变）</h2>
+        <div class="row">
+          <input id="smp-name" placeholder="样本名" value="sample">
+        </div>
+        <div class="row">
+          <select id="smp-format"></select>
+          <input id="smp-hex" placeholder="十六进制，如 494d4731 01 ...">
+          <button id="smp-upload" class="primary">导入样本</button>
+        </div>
+        <div id="smp-list" class="list"></div>
+      </div>
+      <div class="panel grow">
+        <h2>解析视图</h2>
+        <div class="row">
+          <select id="parse-pick"></select>
+          <button id="parse-go" class="primary">解析</button>
+          <label><input type="checkbox" id="parse-diff"> 与另一版本对比</label>
+          <select id="parse-diff-ver"></select>
+        </div>
+        <div id="parse-issues" class="result"></div>
+        <div class="cols">
+          <div class="panel grow">
+            <h3>十六进制覆盖图 <span id="hex-status" class="small"></span></h3>
+            <div id="hexview" class="hex mono"></div>
+          </div>
+          <div class="panel grow">
+            <h3>结构树（点击字段查看读写范围）</h3>
+            <div id="tree" class="tree mono"></div>
+          </div>
+        </div>
+        <div id="field-detail" class="result small"></div>
+        <div id="diff-view" class="mono small"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Rules / migration ================= -->
+  <section id="tab-rules" class="tabpane">
+    <div class="cols">
+      <div class="panel">
+        <h2>规则列表</h2>
+        <div id="rule-list" class="list"></div>
+        <h3>对样本集 Dry-run</h3>
+        <div class="row">
+          <select id="dry-rule"></select>
+          <button id="dry-go" class="primary">运行 dry-run</button>
+        </div>
+        <div id="dry-report"></div>
+      </div>
+      <div class="panel grow">
+        <h2>编辑迁移规则</h2>
+        <div class="row">
+          <label>基准修订号<input id="rule-base" type="number" value="0" style="width:80px"></label>
+          <button id="rule-new">空白模板</button>
+          <button id="rule-save" class="primary">保存为新修订</button>
+          <button id="rule-validate">仅校验</button>
+        </div>
+        <textarea id="rule-editor" spellcheck="false"></textarea>
+        <div id="rule-result" class="result"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Plans / batches ================= -->
+  <section id="tab-plans" class="tabpane">
+    <div class="cols">
+      <div class="panel">
+        <h2>迁移计划</h2>
+        <div class="row">
+          <input id="plan-name" placeholder="计划名" value="plan">
+          <select id="plan-rule"></select>
+          <button id="plan-create">从最近 dry-run 创建</button>
+        </div>
+        <div id="plan-list" class="list"></div>
+        <h3>批次</h3>
+        <div class="row">
+          <button id="batch-run" class="primary">批量转换全部匹配样本</button>
+        </div>
+        <div id="batch-list" class="list"></div>
+      </div>
+      <div class="panel grow">
+        <h2>计划详情</h2>
+        <div id="plan-detail"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
